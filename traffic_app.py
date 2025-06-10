@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
 
 # Custom CSS for advanced styling
 st.markdown("""
@@ -14,6 +15,46 @@ st.markdown("""
         .report-table td, .report-table th {padding: 8px 16px;}
     </style>
 """, unsafe_allow_html=True)
+
+# --- Registration/Login Section ---
+def register_user(email, phone, region):
+    user_data = pd.DataFrame([{
+        "email": email,
+        "phone": phone,
+        "region": region
+    }])
+    if os.path.exists("users.csv"):
+        user_data.to_csv("users.csv", mode="a", header=False, index=False)
+    else:
+        user_data.to_csv("users.csv", index=False)
+
+def user_exists(email):
+    if not os.path.exists("users.csv"):
+        return False
+    df = pd.read_csv("users.csv")
+    return email in df["email"].values
+
+def login_page():
+    st.title("🔐 Liberia Traffic System Login")
+    st.markdown("Register or log in to receive traffic alerts and updates.")
+    with st.form("login_form"):
+        email = st.text_input("Email")
+        phone = st.text_input("Phone Number")
+        region = st.selectbox("Region", ["Montserrado", "Margibi", "Bong", "Grand Bassa", "Nimba", "Lofa", "Other"])
+        submit = st.form_submit_button("Register / Login")
+    if submit:
+        if not email or not phone:
+            st.error("Please fill in all fields.")
+            st.stop()
+        if not user_exists(email):
+            register_user(email, phone, region)
+            st.success("Registration successful! You are now logged in.")
+        else:
+            st.success("Welcome back! You are now logged in.")
+        st.session_state["logged_in"] = True
+        st.session_state["user_email"] = email
+        st.session_state["user_phone"] = phone
+        st.session_state["user_region"] = region
 
 # Mock data for Liberia
 def load_data():
@@ -75,3 +116,22 @@ if st.checkbox("Show Past Reports"):
         return f"color: {color}; font-weight: bold;"
     st.markdown("#### Historical Congestion Reports")
     st.dataframe(df.style.applymap(color_congestion, subset=["congestion"]), height=300)
+    
+    from twilio.rest import Client
+
+def send_alert(route, status):
+    client = Client("AC6ed1e2878cdd8c2c4817fb026298865b", "c2117018c9778ac0f819e0a04a0bfa7c")
+    client.messages.create(
+        body=f"TRAFFIC ALERT: {route} is {status}!",
+        from_="+14843715055",  # Your Twilio number
+        to="+231772043005",  # Driver's number
+    )
+
+if st.button("confirm congestion"):
+    # Send alert if congestion is confirmed
+    send_alert(route, predict_congestion(route, hour))
+
+# --- Main App Logic ---
+if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+    login_page()
+    st.stop()
