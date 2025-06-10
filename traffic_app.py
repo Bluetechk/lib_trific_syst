@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import requests
+from dotenv import load_dotenv
 
 # --- Registration/Login Utilities ---
 def register_user(email, phone, region):
@@ -172,108 +174,31 @@ def predict_congestion(route, hour):
     return "LIGHT"
 
 # --- Chatbot Page ---
-def chatbot_page():
-    st.title("🤖 Traffic Assistant ChatBot")
+import requests
+import json
+import os
 
-    # Initialize chat history
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = [
-            {"role": "bot", "content": "Hi! I can help you find the best route with the least traffic. Where are you starting from?"}
-        ]
-        st.session_state.chat_step = 0
-        st.session_state.user_location = ""
-        st.session_state.user_destination = ""
+url = "https://openrouter.ai/api/v1/chat/completions"
+headers = {
+  "Authorization": f"Bearer {os.environ.get('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')}",
+  "Content-Type": "application/json"
+}
+payload = {
+  "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "hi I am trackbot how can I help you with traffic today"
+    },
+    {
+      "role": "user",
+      "content": "what is the traffic condition in monrovia"
+    }
+  ],
+  "top_p": 1,
+  "frequency_penalty": 0,
+  "presence_penalty": 0
+}
 
-    # Display chat history
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "bot":
-            st.chat_message("assistant").write(msg["content"])
-        else:
-            st.chat_message("user").write(msg["content"])
-
-    # Chat input
-    user_input = st.chat_input("Type your message here...")
-
-    if user_input:
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-        if st.session_state.chat_step == 0:
-            st.session_state.user_location = user_input
-            st.session_state.chat_history.append({
-                "role": "bot",
-                "content": "Great! Where do you want to go?"
-            })
-            st.session_state.chat_step = 1
-        elif st.session_state.chat_step == 1:
-            st.session_state.user_destination = user_input
-            # Recommend a route (mock logic)
-            recommended_route = recommend_route(
-                st.session_state.user_location,
-                st.session_state.user_destination
-            )
-            st.session_state.chat_history.append({
-                "role": "bot",
-                "content": f"I recommend taking the {recommended_route} route. It currently has the least traffic!"
-            })
-            st.session_state.chat_step = 2
-        else:
-            st.session_state.chat_history.append({
-                "role": "bot",
-                "content": "If you want to search again, please refresh the page."
-            })
-
-def recommend_route(start, end):
-    # Mock logic: pick the route with the least congestion
-    traffic_data = [
-        {"route": "Red Light", "congestion": "HEAVY"},
-        {"route": "Sinkor", "congestion": "MODERATE"},
-        {"route": "Duala", "congestion": "LIGHT"},
-    ]
-    # In a real app, use actual routing and traffic data
-    best = min(traffic_data, key=lambda x: ["HEAVY", "MODERATE", "LIGHT"].index(x["congestion"]))
-    return best["route"]
-
-# --- Update your main() navigation ---
-def main():
-    st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
-    st.sidebar.title("Liberia Traffic System")
-    menu = ["Home", "View Map", "Historical Data", "ChatBot"]
-    if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
-        menu = ["Login/Register"] + menu
-    choice = st.sidebar.radio("Navigation", menu)
-
-    if choice == "Login/Register":
-        login_register_page()
-        st.stop()
-    elif "logged_in" not in st.session_state or not st.session_state["logged_in"]:
-        st.warning("Please log in or register to access the dashboard.")
-        login_register_page()
-        st.stop()
-    elif choice == "Home":
-        dashboard()
-    elif choice == "View Map":
-        st.markdown('<h1><i class="bi bi-geo-alt-fill"></i> Traffic Locations Map</h1>', unsafe_allow_html=True)
-        traffic_locations = pd.DataFrame([
-            {"route": "Red Light", "lat": 6.3133, "lon": -10.7125, "congestion": "HEAVY"},
-            {"route": "Sinkor", "lat": 6.2827, "lon": -10.7769, "congestion": "MODERATE"},
-            {"route": "Duala", "lat": 6.3672, "lon": -10.7922, "congestion": "LIGHT"},
-        ])
-        st.map(traffic_locations.rename(columns={"lat": "latitude", "lon": "longitude"}))
-        st.dataframe(traffic_locations[["route", "congestion"]])
-    elif choice == "Historical Data":
-        st.title("📊 Historical Congestion Reports")
-        df = load_data()
-        def color_congestion(val):
-            if val == "HEAVY":
-                color = "#e84118"
-            elif val == "MODERATE":
-                color = "#fbc531"
-            else:
-                color = "#44bd32"
-            return f"color: {color}; font-weight: bold;"
-        st.dataframe(df.style.applymap(color_congestion, subset=["congestion"]), height=400)
-    elif choice == "ChatBot":
-        chatbot_page()
-
-if __name__ == "__main__":
-    main()
+response = requests.post(url, headers=headers, json=payload)
+print(response.json())
