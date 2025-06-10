@@ -31,8 +31,13 @@ def get_user(email):
     return None
 
 # --- Registration/Login Page ---
+
 def login_register_page():
-    st.title("🔐 Liberia Traffic System")
+    st.markdown('<h1><i class="bi bi-shield-lock"></i> Liberia Traffic System</h1>', unsafe_allow_html=True)
+    # Add Bootstrap Icons CDN
+    st.markdown("""
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    """, unsafe_allow_html=True)
     st.markdown("Register or log in to receive traffic alerts and updates.")
 
     mode = st.radio("Choose an option:", ["Login", "Register"])
@@ -70,7 +75,9 @@ def login_register_page():
 # --- Main Dashboard ---
 def dashboard():
     # Custom CSS for advanced styling
-    st.markdown("""
+    
+    st.markdown(
+        """
         <style>
             .main {background-color: #f5f6fa;}
             .stButton>button {background-color: #273c75; color: white;}
@@ -80,9 +87,11 @@ def dashboard():
             .congestion-light {color: #44bd32; font-weight: bold;}
             .report-table td, .report-table th {padding: 8px 16px;}
         </style>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
 
-    st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/5/59/Flag_of_Liberia.svg", width=120)
+    st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
     st.sidebar.title("Liberia Traffic System")
     st.sidebar.markdown("Monitor and predict traffic congestion in major routes of Monrovia.")
 
@@ -90,7 +99,7 @@ def dashboard():
     st.markdown("Get real-time predictions and view historical traffic congestion data.")
 
     # --- Map Section ---
-    st.subheader("🗺️ Traffic Locations Map")
+    st.markdown('<h3><i class="bi bi-geo-alt-fill"></i> Traffic Locations Map</h3>', unsafe_allow_html=True)
     # Example coordinates for demonstration (Red Light, Sinkor, Duala)
     traffic_locations = pd.DataFrame([
         {"route": "Red Light", "lat": 6.3133, "lon": -10.7125, "congestion": "HEAVY"},
@@ -163,8 +172,46 @@ def predict_congestion(route, hour):
     return "LIGHT"
 
 # --- Main App Logic ---
-if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
-    login_register_page()
-    st.stop()
-else:
-    dashboard()
+def main():
+    # Sidebar navigation
+    st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
+    st.sidebar.title("Liberia Traffic System")
+    menu = ["Home", "View Map", "Historical Data"]
+    if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+        menu = ["Login/Register"] + menu
+    choice = st.sidebar.radio("Navigation", menu)
+
+    # Routing logic
+    if choice == "Login/Register":
+        login_register_page()
+        st.stop()
+    elif "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+        st.warning("Please log in or register to access the dashboard.")
+        login_register_page()
+        st.stop()
+    elif choice == "Home":
+        dashboard()
+    elif choice == "View Map":
+        st.markdown('<h1><i class="bi bi-geo-alt-fill"></i> Traffic Locations Map</h1>', unsafe_allow_html=True)
+        traffic_locations = pd.DataFrame([
+            {"route": "Red Light", "lat": 6.3133, "lon": -10.7125, "congestion": "HEAVY"},
+            {"route": "Sinkor", "lat": 6.2827, "lon": -10.7769, "congestion": "MODERATE"},
+            {"route": "Duala", "lat": 6.3672, "lon": -10.7922, "congestion": "LIGHT"},
+        ])
+        st.map(traffic_locations.rename(columns={"lat": "latitude", "lon": "longitude"}))
+        st.dataframe(traffic_locations[["route", "congestion"]])
+    elif choice == "Historical Data":
+        st.title("📊 Historical Congestion Reports")
+        df = load_data()
+        def color_congestion(val):
+            if val == "HEAVY":
+                color = "#e84118"
+            elif val == "MODERATE":
+                color = "#fbc531"
+            else:
+                color = "#44bd32"
+            return f"color: {color}; font-weight: bold;"
+        st.dataframe(df.style.applymap(color_congestion, subset=["congestion"]), height=400)
+
+if __name__ == "__main__":
+    main()
