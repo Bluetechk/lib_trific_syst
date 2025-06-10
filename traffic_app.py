@@ -171,17 +171,77 @@ def predict_congestion(route, hour):
         return "MODERATE"
     return "LIGHT"
 
-# --- Main App Logic ---
+# --- Chatbot Page ---
+def chatbot_page():
+    st.title("🤖 Traffic Assistant ChatBot")
+
+    # Initialize chat history
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = [
+            {"role": "bot", "content": "Hi! I can help you find the best route with the least traffic. Where are you starting from?"}
+        ]
+        st.session_state.chat_step = 0
+        st.session_state.user_location = ""
+        st.session_state.user_destination = ""
+
+    # Display chat history
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "bot":
+            st.chat_message("assistant").write(msg["content"])
+        else:
+            st.chat_message("user").write(msg["content"])
+
+    # Chat input
+    user_input = st.chat_input("Type your message here...")
+
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+        if st.session_state.chat_step == 0:
+            st.session_state.user_location = user_input
+            st.session_state.chat_history.append({
+                "role": "bot",
+                "content": "Great! Where do you want to go?"
+            })
+            st.session_state.chat_step = 1
+        elif st.session_state.chat_step == 1:
+            st.session_state.user_destination = user_input
+            # Recommend a route (mock logic)
+            recommended_route = recommend_route(
+                st.session_state.user_location,
+                st.session_state.user_destination
+            )
+            st.session_state.chat_history.append({
+                "role": "bot",
+                "content": f"I recommend taking the {recommended_route} route. It currently has the least traffic!"
+            })
+            st.session_state.chat_step = 2
+        else:
+            st.session_state.chat_history.append({
+                "role": "bot",
+                "content": "If you want to search again, please refresh the page."
+            })
+
+def recommend_route(start, end):
+    # Mock logic: pick the route with the least congestion
+    traffic_data = [
+        {"route": "Red Light", "congestion": "HEAVY"},
+        {"route": "Sinkor", "congestion": "MODERATE"},
+        {"route": "Duala", "congestion": "LIGHT"},
+    ]
+    # In a real app, use actual routing and traffic data
+    best = min(traffic_data, key=lambda x: ["HEAVY", "MODERATE", "LIGHT"].index(x["congestion"]))
+    return best["route"]
+
+# --- Update your main() navigation ---
 def main():
-    # Sidebar navigation
     st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
     st.sidebar.title("Liberia Traffic System")
-    menu = ["Home", "View Map", "Historical Data"]
+    menu = ["Home", "View Map", "Historical Data", "ChatBot"]
     if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
         menu = ["Login/Register"] + menu
     choice = st.sidebar.radio("Navigation", menu)
 
-    # Routing logic
     if choice == "Login/Register":
         login_register_page()
         st.stop()
@@ -212,6 +272,8 @@ def main():
                 color = "#44bd32"
             return f"color: {color}; font-weight: bold;"
         st.dataframe(df.style.applymap(color_congestion, subset=["congestion"]), height=400)
+    elif choice == "ChatBot":
+        chatbot_page()
 
 if __name__ == "__main__":
     main()
