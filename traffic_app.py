@@ -6,6 +6,38 @@ import requests
 from dotenv import load_dotenv
 load_dotenv()
 
+# --- Custom CSS for Classic UI ---
+st.markdown("""
+    <style>
+        body {
+            background-color: #f4f6f8;
+        }
+        .main {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 2rem 2rem 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(44,62,80,0.07);
+            margin-bottom: 2rem;
+        }
+        .stSidebar {
+            background: #273c75 !important;
+        }
+        .stButton>button {
+            background-color: #273c75;
+            color: white;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        .stRadio>label, .stSelectbox>label, .stTextInput>label {
+            font-weight: bold;
+        }
+        .congestion-heavy {color: #e84118; font-weight: bold;}
+        .congestion-moderate {color: #fbc531; font-weight: bold;}
+        .congestion-light {color: #44bd32; font-weight: bold;}
+        footer {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
 # --- Registration/Login Utilities ---
 def register_user(email, phone, region):
     user_data = pd.DataFrame([{
@@ -34,10 +66,8 @@ def get_user(email):
     return None
 
 # --- Registration/Login Page ---
-
 def login_register_page():
-    st.markdown('<h1><i class="bi bi-shield-lock"></i> Liberia Traffic System</h1>', unsafe_allow_html=True)
-    # Add Bootstrap Icons CDN
+    st.markdown('<h1 style="color:#273c75;"><i class="bi bi-shield-lock"></i> Liberia Traffic System</h1>', unsafe_allow_html=True)
     st.markdown("""
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     """, unsafe_allow_html=True)
@@ -77,41 +107,18 @@ def login_register_page():
 
 # --- Main Dashboard ---
 def dashboard():
-    # Custom CSS for advanced styling
-    
-    st.markdown(
-        """
-        <style>
-            .main {background-color: #f5f6fa;}
-            .stButton>button {background-color: #273c75; color: white;}
-            .stCheckbox>label {font-weight: bold;}
-            .congestion-heavy {color: #e84118; font-weight: bold;}
-            .congestion-moderate {color: #fbc531; font-weight: bold;}
-            .congestion-light {color: #44bd32; font-weight: bold;}
-            .report-table td, .report-table th {padding: 8px 16px;}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
-    st.sidebar.title("Liberia Traffic System")
-    st.sidebar.markdown("Monitor and predict traffic congestion in major routes of Monrovia.")
-
-    st.title("🚦 Liberia Traffic Dashboard")
+    st.markdown('<div class="main">', unsafe_allow_html=True)
+    st.markdown('<h2 style="color:#273c75;">🚦 Liberia Traffic Dashboard</h2>', unsafe_allow_html=True)
     st.markdown("Get real-time predictions and view historical traffic congestion data.")
 
     # --- Map Section ---
-    st.markdown('<h3><i class="bi bi-geo-alt-fill"></i> Traffic Locations Map</h3>', unsafe_allow_html=True)
-    # Example coordinates for demonstration (Red Light, Sinkor, Duala)
+    st.markdown('<h4 style="color:#192a56;"><i class="bi bi-geo-alt-fill"></i> Traffic Locations Map</h4>', unsafe_allow_html=True)
     traffic_locations = pd.DataFrame([
         {"route": "Red Light", "lat": 6.3133, "lon": -10.7125, "congestion": "HEAVY"},
         {"route": "Sinkor", "lat": 6.2827, "lon": -10.7769, "congestion": "MODERATE"},
         {"route": "Duala", "lat": 6.3672, "lon": -10.7922, "congestion": "LIGHT"},
     ])
     st.map(traffic_locations.rename(columns={"lat": "latitude", "lon": "longitude"}))
-
-    # Optionally, show a table with congestion status
     st.dataframe(traffic_locations[["route", "congestion"]])
 
     col1, col2 = st.columns([2, 1])
@@ -142,19 +149,8 @@ def dashboard():
                 color = "#44bd32"
             return f"color: {color}; font-weight: bold;"
         st.markdown("#### Historical Congestion Reports")
-        st.dataframe(df.style.applymap(color_congestion, subset=["congestion"]), height=300)
-
-    # Example: Send alert button (optional)
-    # from twilio.rest import Client
-    # def send_alert(route, status):
-    #     client = Client("AC6ed1e2878cdd8c2c4817fb026298865b", "c2117018c9778ac0f819e0a04a0bfa7c")
-    #     client.messages.create(
-    #         body=f"TRAFFIC ALERT: {route} is {status}!",
-    #         from_="+14843715055",
-    #         to=st.session_state.get("user_phone", ""),
-    #     )
-    # if st.button("Confirm Congestion"):
-    #     send_alert(route, predict_congestion(route, hour))
+        st.dataframe(df.style.map(color_congestion, subset=["congestion"]), height=400)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def load_data():
     return pd.DataFrame([
@@ -176,32 +172,27 @@ def predict_congestion(route, hour):
 
 # --- Chatbot Page ---
 def chatbot_page():
+    st.markdown('<div class="main">', unsafe_allow_html=True)
     st.title("🤖 Liberia Traffic Chatbot")
     
-    # Verify API key
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         st.error("API key missing! Add OPENROUTER_API_KEY to .env")
         return
 
-    # Initialize chat
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = [
             {"role": "system", "content": "You're a Liberian traffic assistant. Use short answers with emojis."}
         ]
 
-    # Display chat
     for msg in st.session_state.chat_history[1:]:
         st.chat_message(msg["role"]).write(msg["content"])
 
-    # User input
     if user_input := st.chat_input("Ask about traffic..."):
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        
-        # API Call
         headers = {
             "Authorization": f"Bearer {api_key}",
-            "HTTP-Referer": "https://liberia-traffic.streamlit.app",  # Replace with your URL
+            "HTTP-Referer": "https://liberia-traffic.streamlit.app",
             "X-Title": "Liberia Traffic Bot",
             "Content-Type": "application/json"
         }
@@ -209,7 +200,6 @@ def chatbot_page():
             "model": "deepseek-chat",
             "messages": st.session_state.chat_history,
         }
-        
         try:
             with st.spinner("Checking traffic..."):
                 response = requests.post(
@@ -220,17 +210,51 @@ def chatbot_page():
                 )
                 response.raise_for_status()
                 ai_content = response.json()["choices"][0]["message"]["content"]
-                
         except requests.exceptions.HTTPError as e:
             st.error(f"API Error: {e.response.text}")
             ai_content = "⚠️ Temporary network issue. Try again."
-            
         st.session_state.chat_history.append({"role": "assistant", "content": ai_content})
-        st.rerun()  # Refresh to show new message
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
+# --- Map Page ---
+def view_map_page():
+    st.markdown('<div class="main">', unsafe_allow_html=True)
+    st.markdown('<h2 style="color:#273c75;">🗺️ Liberia Live Traffic Map</h2>', unsafe_allow_html=True)
+    st.markdown("See live traffic with Waze and compare with system data below.")
+
+    # Embed Waze Live Map (centered on Monrovia, Liberia)
+    st.markdown(
+        """
+        <iframe src="https://embed.waze.com/iframe?zoom=13&lat=6.3008&lon=-10.7972"
+                width="100%" height="500" allowfullscreen></iframe>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Optionally, show your own traffic data below
+    traffic_locations = pd.DataFrame([
+        {"route": "Red Light", "lat": 6.3133, "lon": -10.7125, "congestion": "HEAVY"},
+        {"route": "Sinkor", "lat": 6.2827, "lon": -10.7769, "congestion": "MODERATE"},
+        {"route": "Duala", "lat": 6.3672, "lon": -10.7922, "congestion": "LIGHT"},
+    ])
+    st.markdown("#### System Traffic Data")
+    st.map(traffic_locations.rename(columns={"lat": "latitude", "lon": "longitude"}))
+    st.dataframe(traffic_locations[["route", "congestion"]])
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Main App Logic with Sidebar Navigation ---
 def main():
     st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
     st.sidebar.title("Liberia Traffic System")
+    st.sidebar.markdown(
+        """
+        <style>
+            .sidebar-content {background-color: #273c75; color: white;}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     menu = ["Home", "View Map", "Historical Data", "Chatbot"]
     if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
         menu = ["Login/Register"] + menu
@@ -244,13 +268,22 @@ def main():
     elif choice == "Home":
         dashboard()
     elif choice == "View Map":
-        # ... your map code ...
-        pass
+        view_map_page()
     elif choice == "Historical Data":
-        # ... your historical data code ...
-        pass
+        dashboard()  # You can split this if you want a separate historical data page
     elif choice == "Chatbot":
         chatbot_page()
+
+    # Footer
+    st.markdown(
+        """
+        <hr>
+        <center style="color:#888;font-size:0.9em;">
+            Liberia Traffic System &copy; 2025 | Powered by Streamlit
+        </center>
+        """,
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
