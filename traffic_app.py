@@ -4,7 +4,6 @@ from datetime import datetime
 import os
 import requests
 from dotenv import load_dotenv
-load_dotenv()
 
 # --- Custom CSS for Classic UI ---
 st.markdown("""
