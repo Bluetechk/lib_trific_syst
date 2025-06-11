@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime
 import os
 import requests
-from dotenv import load_dotenv
 
 # --- Custom CSS for Classic UI ---
 st.markdown("""
@@ -174,10 +173,8 @@ def chatbot_page():
     st.markdown('<div class="main">', unsafe_allow_html=True)
     st.title("🤖 Liberia Traffic Chatbot")
     
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        st.error("API key missing! Add OPENROUTER_API_KEY to .env")
-        return
+    # Use Streamlit secrets for API key (works on Streamlit Cloud)
+    api_key = st.secrets["OPENROUTER_API_KEY"]
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = [
