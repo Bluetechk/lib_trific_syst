@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 import requests
 from dotenv import load_dotenv
+load_dotenv()
 
 # --- Registration/Login Utilities ---
 def register_user(email, phone, region):
@@ -174,31 +175,82 @@ def predict_congestion(route, hour):
     return "LIGHT"
 
 # --- Chatbot Page ---
-import requests
-import json
-import os
+def chatbot_page():
+    st.title("🤖 Liberia Traffic Chatbot")
+    
+    # Verify API key
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        st.error("API key missing! Add OPENROUTER_API_KEY to .env")
+        return
 
-url = "https://openrouter.ai/api/v1/chat/completions"
-headers = {
-  "Authorization": f"Bearer {os.environ.get('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')}",
-  "Content-Type": "application/json"
-}
-payload = {
-  "model": "deepseek/deepseek-r1-0528-qwen3-8b",
-  "messages": [
-    {
-      "role": "system",
-      "content": "hi I am trackbot how can I help you with traffic today"
-    },
-    {
-      "role": "user",
-      "content": "what is the traffic condition in monrovia"
-    }
-  ],
-  "top_p": 1,
-  "frequency_penalty": 0,
-  "presence_penalty": 0
-}
+    # Initialize chat
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = [
+            {"role": "system", "content": "You're a Liberian traffic assistant. Use short answers with emojis."}
+        ]
 
-response = requests.post(url, headers=headers, json=payload)
-print(response.json())
+    # Display chat
+    for msg in st.session_state.chat_history[1:]:
+        st.chat_message(msg["role"]).write(msg["content"])
+
+    # User input
+    if user_input := st.chat_input("Ask about traffic..."):
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        
+        # API Call
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://liberia-traffic.streamlit.app",  # Replace with your URL
+            "X-Title": "Liberia Traffic Bot",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "deepseek-chat",
+            "messages": st.session_state.chat_history,
+        }
+        
+        try:
+            with st.spinner("Checking traffic..."):
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                response.raise_for_status()
+                ai_content = response.json()["choices"][0]["message"]["content"]
+                
+        except requests.exceptions.HTTPError as e:
+            st.error(f"API Error: {e.response.text}")
+            ai_content = "⚠️ Temporary network issue. Try again."
+            
+        st.session_state.chat_history.append({"role": "assistant", "content": ai_content})
+        st.rerun()  # Refresh to show new message
+
+def main():
+    st.sidebar.image("https://flagcdn.com/w320/lr.png", width=120)
+    st.sidebar.title("Liberia Traffic System")
+    menu = ["Home", "View Map", "Historical Data", "Chatbot"]
+    if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+        menu = ["Login/Register"] + menu
+    choice = st.sidebar.radio("Navigation", menu)
+
+    if choice == "Login/Register":
+        login_register_page()
+    elif "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+        st.warning("Please log in or register to access the dashboard.")
+        login_register_page()
+    elif choice == "Home":
+        dashboard()
+    elif choice == "View Map":
+        # ... your map code ...
+        pass
+    elif choice == "Historical Data":
+        # ... your historical data code ...
+        pass
+    elif choice == "Chatbot":
+        chatbot_page()
+
+if __name__ == "__main__":
+    main()
